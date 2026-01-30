@@ -1,14 +1,29 @@
-# import time
-# from core.redis_client import get_redis
+from time import sleep
+import time,redis,requests
+import json 
+redis_client = redis.Redis(host='127.0.0.1', port=6789, db=0)
+print("Worker started. Listening on api_limiter queue...")
+def process_queue():
+    while True:
+        all_keys=redis_client.keys("api_limiter_*")    
+        if not all_keys:
+            sleep(1)
+            continue
+        queue_name=all_keys[0]
+        task=redis_client.lpop(queue_name)
+        if task:
+            task_data=json.loads(task)
+            try:
+                response=requests.request(
+                    method=task_data['method'],
+                    url=task_data['url'],
+                    data=task_data['body'],
+                    headers=task_data['headers'],
+                    timeout=5
+                )
+                print("Task processed. Status code:",response.status_code)
+            except Exception as e:
+                print("Error processing task:",e)
 
-# redis_client=get_redis()
-
-# def process_queue():
-#     while True:
-#         t_now=time.ctime()
-#         split=t_now.split(' ')
-#         current_time=split[3]
-#         current_date=split[2] + split[1] + split[4]
-#         current_time_hour_minute=current_time.split(':')[0]+':' +current_time.split(':')[1]
-#         queue_name = f"api_limiter_{current_time_hour_minute}_{current_date}"
-
+if __name__ == "__main__":
+    process_queue()

@@ -1,9 +1,8 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-import requests
 from .redis_client import get_redis
-import time,copy,json
+import time,json
 
 
 # Create your views here.
@@ -20,15 +19,14 @@ def api_limiter_route(request):
     current_date=split[2] + split[1] + split[4]
     current_time_hour_minute=current_time.split(':')[0]+':' +current_time.split(':')[1]
     queue_name = f"api_limiter_{current_time_hour_minute}_{current_date}"
-    payload=request_maker_for_queue(request)
-    print(payload,queue_name,redis_client,'hello')
+    payload=payload_maker_for_queue(request)
     redis_client.lpush(queue_name, json.dumps(payload))
     return Response({"message":"Queued"})
 
-def request_maker_for_queue(request):
+def payload_maker_for_queue(request):
     payload={
-        'url':'http://127.0.0.1:8000/api_limiter/',
-        'method':'POST',
+        'url':'http://127.0.0.1:8000/health/',
+        'method':'GET',
         'body':request.data,
         'headers':{
             "Authorization":request.headers.get("Authorization")
